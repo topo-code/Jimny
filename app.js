@@ -132,6 +132,14 @@ function compute(month){
   return {rows,issues,op,buyL,buyE,use,useE,endL,endE,km,fuels};
 }
 
+/* ---------- Excel modulis: vietējais fails, rezervē CDN ---------- */
+let excelP=null;
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=()=>{s.remove();rej(new Error(src))};document.head.appendChild(s)})}
+function ensureExcel(){if(typeof ExcelJS!=="undefined")return Promise.resolve();
+  if(!excelP)excelP=loadScript("vendor/exceljs.min.js").catch(()=>loadScript("https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"))
+    .then(()=>{if(typeof ExcelJS==="undefined")throw new Error("nav")}).catch(e=>{excelP=null;throw e});
+  return excelP}
+
 /* ---------- Excel ---------- */
 async function buildXlsx(month){
   const c=compute(month);const [y,m]=month.split("-").map(Number);const last=new Date(y,m,0).getDate();
@@ -175,7 +183,7 @@ async function shareOrDownload(blob,name,title){const file=new File([blob],name,
   if($("xSh"))$("xSh").onclick=async()=>{try{await navigator.share({files:[file],title:name})}catch(e){}};
   $("xCl").onclick=closeSheet}
 async function exportXlsx(){
-  if(typeof ExcelJS==="undefined")return toast("Excel modulis vēl ielādējas — mēģini pēc brīža.");
+  try{await ensureExcel()}catch(e){return toast("Neizdevās ielādēt Excel moduli — pārbaudi, vai GitHub ir fails vendor/exceljs.min.js, vai pieslēdz internetu.")}
   const c0=compute(S.month);if(!c0.rows.length)return toast("Šim mēnesim nav ierakstu.");
   if(c0.op.l==null)return toast("Vispirms iestatījumos ievadi atlikumu mēneša sākumā.");
   const {blob,name,c}=await buildXlsx(S.month);
@@ -197,7 +205,7 @@ function renderYear(){if(!S.year)S.year=new Date().getFullYear();$("yTitle").tex
   $("yChart").innerHTML=svg+"</svg>";
   $("yBody").innerHTML=Y.filter(x=>x.days||x.buyL).map(x=>`<tr><td><a href="#menesis" data-m="${x.mk}" style="color:inherit">${MON_NOM[x.m-1]}</a></td><td>${x.days}</td><td>${fmt(x.km)}</td><td>${x.avg==null?"—":fmt(x.avg)}</td><td>${fmt(x.buyL,2)}</td><td>${fmt(x.buyE,2)}</td><td>${fmt(x.use,2)}</td><td>${x.per100==null?"—":fmt(x.per100,2)}</td></tr>`).join("")||`<tr><td colspan="8"><span class="empty">Šajā gadā vēl nav ierakstu.</span></td></tr>`;
   $("yBody").querySelectorAll("a[data-m]").forEach(a=>a.onclick=()=>{S.month=a.dataset.m})}
-async function exportYear(){if(typeof ExcelJS==="undefined")return toast("Excel modulis vēl ielādējas.");const y=S.year;const Y=yearData(y);
+async function exportYear(){try{await ensureExcel()}catch(e){return toast("Neizdevās ielādēt Excel moduli — pieslēdz internetu un mēģini vēlreiz.")}const y=S.year;const Y=yearData(y);
   const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet(`Pārskats ${y}`);const TNR=(b)=>({name:"Times New Roman",size:11,bold:!!b});const thin={style:"thin"};const box={top:thin,left:thin,bottom:thin,right:thin};
   ws.getCell("B2").value=S.settings.uznemums;ws.getCell("B2").font={name:"Times New Roman",size:12,bold:true,italic:true};
   ws.getCell("B4").value=`Jimny nobraukuma un degvielas pārskats ${y}.g. ${S.settings.auto}`;ws.getCell("B4").font={name:"Times New Roman",size:16,bold:true,italic:true};
