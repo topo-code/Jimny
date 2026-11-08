@@ -136,7 +136,7 @@ function compute(month){
 let excelP=null;
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=()=>{s.remove();rej(new Error(src))};document.head.appendChild(s)})}
 function ensureExcel(){if(typeof ExcelJS!=="undefined")return Promise.resolve();
-  if(!excelP)excelP=loadScript("vendor/exceljs.min.js").catch(()=>loadScript("https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"))
+  if(!excelP)excelP=loadScript("exceljs.min.js").catch(()=>loadScript("https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"))
     .then(()=>{if(typeof ExcelJS==="undefined")throw new Error("nav")}).catch(e=>{excelP=null;throw e});
   return excelP}
 
@@ -183,7 +183,7 @@ async function shareOrDownload(blob,name,title){const file=new File([blob],name,
   if($("xSh"))$("xSh").onclick=async()=>{try{await navigator.share({files:[file],title:name})}catch(e){}};
   $("xCl").onclick=closeSheet}
 async function exportXlsx(){
-  try{await ensureExcel()}catch(e){return toast("Neizdevās ielādēt Excel moduli — pārbaudi, vai GitHub ir fails vendor/exceljs.min.js, vai pieslēdz internetu.")}
+  try{await ensureExcel()}catch(e){return toast("Neizdevās ielādēt Excel moduli — pārbaudi, vai GitHub ir fails exceljs.min.js, vai pieslēdz internetu.")}
   const c0=compute(S.month);if(!c0.rows.length)return toast("Šim mēnesim nav ierakstu.");
   if(c0.op.l==null)return toast("Vispirms iestatījumos ievadi atlikumu mēneša sākumā.");
   const {blob,name,c}=await buildXlsx(S.month);

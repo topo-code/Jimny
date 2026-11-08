@@ -1,9 +1,9 @@
 /* Bezsaistes kešatmiņa. Mainot lietotnes failus, palielini VERSION. */
-const VERSION = "jimny-v4";
+const VERSION = "jimny-v5";
 const FILES = [
   "./", "index.html", "style.css", "app.js", "gaz.js", "manifest.webmanifest",
-  "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png",
-  "vendor/exceljs.min.js"
+  "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png",
+  "exceljs.min.js"
 ];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => Promise.all(FILES.map(f => c.add(f).catch(() => null)))).then(() => self.skipWaiting()));
