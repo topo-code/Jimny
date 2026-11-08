@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="lv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Jimny maršruta lapa</title>
+<meta name="theme-color" content="#16191c">
+<meta name="description" content="Darba dienu, odometra un uzpilžu uzskaite un mēneša degvielas atskaite Excel formātā.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">Jimny NM-9109<small>Maršruta lapa un degvielas atskaite</small></div>
+  <nav aria-label="Sadaļas">
+    <a href="#sodien" id="nav-sodien">Šodien</a>
+    <a href="#menesis" id="nav-menesis">Mēnesis</a>
+    <a href="#parskats" id="nav-parskats">Pārskats</a>
+    <a href="#iestatijumi" id="nav-iestatijumi">Iestatījumi</a>
+  </nav>
+</header>
+<main>
+  <div id="banner" hidden></div>
+  <button class="btn slim primary install" id="btnInstall" type="button">Instalēt lietotni telefonā</button>
+
+  <section id="v-sodien" class="view" hidden>
+    <div class="lcd" aria-live="polite">
+      <div class="top"><span id="lcdDate">—</span><span id="lcdClock">—</span></div>
+      <div class="state" id="lcdState">Darba diena nav sākta</div>
+      <div class="grid">
+        <div class="cell"><span>Sākums</span><b id="lcdStart">—</b><i id="lcdStartT">&nbsp;</i></div>
+        <div class="cell"><span>Beigas</span><b id="lcdEnd">—</b><i id="lcdEndT">&nbsp;</i></div>
+        <div class="cell"><span>Nobraukts</span><b id="lcdKm">—</b><i>km</i></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="btnStart" type="button">Sākt dienu<small>ievadi km</small></button>
+      <button class="btn" id="btnFuel" type="button">Uzpilde<small>litri un €</small></button>
+      <button class="btn" id="btnEnd" type="button">Beigt dienu<small id="btnEndSub">viens spiediens</small></button>
+    </div>
+    <div class="card">
+      <h2>Pēdējās 7 dienas</h2>
+      <div class="list" id="weekList"></div>
+    </div>
+  </section>
+
+  <section id="v-menesis" class="view" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <button class="btn slim" id="mPrev" type="button" aria-label="Iepriekšējais mēnesis">‹</button>
+        <h2 id="mTitle" style="font-size:20px;color:var(--ink)">—</h2>
+        <button class="btn slim" id="mNext" type="button" aria-label="Nākamais mēnesis">›</button>
+      </div>
+      <div class="row">
+        <label class="btn slim">1. Ielādēt Timeline failu<input type="file" accept=".json,application/json" id="inTl"></label>
+        <button class="btn slim primary" id="btnXlsx" type="button">2. Izveidot Excel</button>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span>Nobraukts</span><b id="kKm">0</b> km</div>
+      <div class="kpi"><span>Iepirkts</span><b id="kBuy">0</b> l</div>
+      <div class="kpi"><span>Patērēts</span><b id="kUse">0</b> l</div>
+      <div class="kpi"><span>Atlikums</span><b id="kLeft">0</b> l</div>
+    </div>
+    <div class="card" id="issuesCard" hidden><h2>Jāpārbauda</h2><ul class="issues" id="issues"></ul></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Datums</th><th class="route">Maršruts</th><th>Sākums</th><th>Beigas</th><th>km</th><th>Iepirkts l</th><th>Patērēts l</th><th>Atlikums</th></tr></thead>
+        <tbody id="mBody"></tbody>
+      </table>
+    </div>
+    <p class="note">Maršruts tiek salikts no Timeline braucieniem starp dienas sākumu un beigām. Labot var, uzspiežot uz teksta.</p>
+  </section>
+
+  <section id="v-parskats" class="view" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <button class="btn slim" id="yPrev" type="button" aria-label="Iepriekšējais gads">‹</button>
+        <h2 id="yTitle" style="font-size:20px;color:var(--ink)">—</h2>
+        <button class="btn slim" id="yNext" type="button" aria-label="Nākamais gads">›</button>
+      </div>
+      <button class="btn slim" id="btnYear" type="button">Gada pārskats Excel</button>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span>Nobraukts gadā</span><b id="yKm">0</b> km</div>
+      <div class="kpi"><span>Darba dienas</span><b id="yDays">0</b></div>
+      <div class="kpi"><span>Degviela iepirkta</span><b id="yEur">0</b> €</div>
+      <div class="kpi"><span>Vidēji dienā</span><b id="yAvg">0</b> km</div>
+    </div>
+    <div class="card"><h2>Nobraukums pa mēnešiem</h2><div id="yChart" style="margin-top:10px"></div></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Mēnesis</th><th>Dienas</th><th>km</th><th>km/dienā</th><th>Iepirkts l</th><th>Iepirkts €</th><th>Patērēts l</th><th>€ / 100 km</th></tr></thead>
+        <tbody id="yBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="v-iestatijumi" class="view" hidden>
+    <form class="card fgrid" id="setForm">
+      <div class="field wide"><label for="sComp">Uzņēmums</label><input id="sComp"></div>
+      <div class="field"><label for="sCar">Auto</label><input id="sCar"></div>
+      <div class="field"><label for="sNorm">Norma, l/100 km</label><input id="sNorm" inputmode="decimal"></div>
+      <div class="field"><label for="sHomeLat">Mājas — platums</label><input id="sHomeLat" inputmode="decimal"></div>
+      <div class="field"><label for="sHomeLon">Mājas — garums</label><input id="sHomeLon" inputmode="decimal"></div>
+      <div class="field"><label for="sWorkLat">Darbs — platums</label><input id="sWorkLat" inputmode="decimal"></div>
+      <div class="field"><label for="sWorkLon">Darbs — garums</label><input id="sWorkLon" inputmode="decimal"></div>
+      <div class="field"><label for="sOpenM">Sākuma atlikuma mēnesis</label><input id="sOpenM" type="month"></div>
+      <div class="field"><label for="sOpenL">Atlikums mēneša sākumā, l</label><input id="sOpenL" inputmode="decimal"></div>
+      <div class="field"><label for="sOpenE">Atlikums mēneša sākumā, €</label><input id="sOpenE" inputmode="decimal"></div>
+      <div class="field wide"><p class="note" style="margin:0">Sākuma atlikumu vajag tikai pirmajam mēnesim. Pēc tam to ņem no iepriekšējā mēneša Excel izveides brīža.</p></div>
+      <div class="wide row"><button class="btn slim primary" type="submit">Saglabāt</button><span class="note" id="setMsg"></span></div>
+    </form>
+    <div class="card" style="display:flex;flex-direction:column;gap:10px">
+      <h2>Rezerves kopija</h2>
+      <p class="note" style="margin:0">Visi ieraksti glabājas tikai šajā telefonā. Reizi mēnesī saglabā kopiju (piemēram, Google Drive), lai tos neatkarīgi no telefona varētu atjaunot. </p>
+      <div class="row">
+        <button class="btn slim" id="btnBackup" type="button">Saglabāt kopiju</button>
+        <label class="btn slim">Atjaunot no kopijas<input type="file" accept=".json,application/json" id="inRestore"></label>
+      </div>
+      <p class="note" id="storeInfo" style="margin:0"></p>
+    </div>
+  </section>
+</main>
+</div>
+
+<div class="sheet" id="sheet" hidden><div class="panel" id="panel" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="vendor/exceljs.min.js" defer></script>
+<script src="gaz.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>

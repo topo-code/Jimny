@@ -1,0 +1,17 @@
+{
+  "name": "Jimny maršruta lapa",
+  "short_name": "Jimny",
+  "description": "Darba dienu, odometra un uzpilžu uzskaite un mēneša degvielas atskaite Excel formātā.",
+  "lang": "lv",
+  "start_url": "./#sodien",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#16191c",
+  "theme_color": "#16191c",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
