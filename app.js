@@ -21,6 +21,11 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function toast(t){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,3500)}
 function banner(html,bad){const b=$("banner");if(!html){b.hidden=true;return}b.className="banner"+(bad?" bad":"");b.innerHTML=html;b.hidden=false}
 
+/* ---------- vide: instalēta lietotne / pārlūks / iebūvēts pārlūks ---------- */
+const ENV={standalone:matchMedia("(display-mode: standalone)").matches||navigator.standalone===true,
+  webview:/; wv\)|FBAN|FBAV|Instagram|GSA\//.test(navigator.userAgent),
+  browser:(()=>{const u=navigator.userAgent;return /SamsungBrowser/.test(u)?"Samsung Internet":/Firefox/.test(u)?"Firefox":/EdgA?\//.test(u)?"Edge":/OPR|Opera/.test(u)?"Opera":/; wv\)/.test(u)?"iebūvēts pārlūks (WebView)":/Chrome/.test(u)?"Chrome":"cits"})()};
+
 /* ---------- IndexedDB ---------- */
 const DB={
   db:null,
@@ -104,26 +109,28 @@ function opening(month){const prev=S.months[prevMonth(month)];if(prev&&prev.beig
   const so=S.settings.sakuma||{};if(so.menesis===month&&so.l!=null)return {l:num(so.l),eur:num(so.eur)??0};return {l:null,eur:null}}
 function compute(month){
   const dates=Object.keys(S.days).filter(d=>d.startsWith(month)).sort();const allDates=Object.keys(S.days).sort();
-  const norm=num(S.settings.norma)||7.9;const rows=[],issues=[];const today=iso(new Date());
+  const norm=num(S.settings.norma)||7.9;const rows=[],issues=[];const today=iso(new Date());let noRoute=0;
   for(const d of dates){const day=S.days[d];if(!day.sakums&&!day.beigas)continue;
     let D=day.sakums?.km??null,E=day.beigas?.km??null,flag=false;
-    if(!day.beigas&&!day.beigas_auto&&d<today)issues.push(`${lvDate(d)}: diena nav noslēgta — ielādē Timeline failu, un beigas noteiks pēc atgriešanās mājās.`);
+    const past=month<today.slice(0,7);
+    if(past&&!day.beigas&&!day.beigas_auto&&d<today)issues.push(`${lvDate(d)}: diena nav noslēgta — ielādē Timeline failu, un beigas noteiks pēc atgriešanās mājās.`);
     const nx=allDates.find(x=>x>d&&S.days[x].sakums);const nextStart=nx?S.days[nx].sakums.km:null;
     if(D==null){issues.push(`${lvDate(d)}: nav dienas sākuma odometra.`);continue}
     if(E==null){
       if(nextStart!=null&&nextStart>=D&&nx<=nextDay(d,4)){E=nextStart;
         if(day.tl_km){const exp=day.tl_km*1.06,diff=E-D;if(diff-exp>Math.max(15,0.2*exp)){issues.push(`${lvDate(d)}: līdz ${lvDate(nx)} rītam +${fmt(diff)} km, bet darba laikā Timeline rāda ~${fmt(exp)} km. Iespējams, ~${fmt(diff-exp)} km nobraukti ar Jimny ārpus darba — ja tā, ievadi dienas beigu km ar roku.`);flag=true}}}
       else if(day.tl_km){E=Math.round(D+day.tl_km*1.06);issues.push(`${lvDate(d)}: vēl nav nākamā rīta odometra — beigas aprēķinātas no Timeline (${fmt(E)} km).`);flag=true}
-      else{issues.push(isLastWorkday(d)?`${lvDate(d)}: mēneša pēdējā darba diena bez beigu km — ievadi to (Šodien → Beigt dienu vai ieraksts tabulā).`:`${lvDate(d)}: nav beigu km — tie tiks ņemti no nākamās dienas sākuma rādījuma.`);E=D;flag=true}}
+      else{if(isLastWorkday(d)&&d<=today)issues.push(`${lvDate(d)}: mēneša pēdējā darba diena bez beigu km — ievadi to (Šodien → Beigt dienu vai ieraksts tabulā).`);else if(past)issues.push(`${lvDate(d)}: nav beigu km — ievadi tos tabulā vai nākamās dienas sākuma rādījumu.`);E=D;flag=past||isLastWorkday(d)}}
     else if(nextStart!=null&&nextStart-E>2)issues.push(`Starp ${lvDate(d)} vakaru (${fmt(E)}) un ${lvDate(nx)} rītu (${fmt(nextStart)}) nobraukti ${fmt(nextStart-E)} km ārpus darba dienas — atskaitē nav iekļauti.`);
     if(E<D){issues.push(`${lvDate(d)}: beigu km mazāki par sākuma km.`);flag=true}
     const route=(day.marsruts||day.marsruts_auto||"").trim();
-    if(!route){issues.push(`${lvDate(d)}: nav maršruta — ielādē Timeline failu vai ieraksti to tabulā.`);flag=true}
+    if(!route){if(month<iso(new Date()).slice(0,7))issues.push(`${lvDate(d)}: nav maršruta — ielādē Timeline failu vai ieraksti to tabulā.`);else noRoute++;flag=month<iso(new Date()).slice(0,7)}
     else if(day.tl_drosi===false&&!day.marsruts)issues.push(`${lvDate(d)}: kāda pietura ir tālu no zināmām apdzīvotām vietām — pārbaudi maršrutu.`);
     rows.push({d,route,D,E,km:Math.max(0,E-D),fuel:[],flag,norm})}
   const fuels=Object.entries(S.fuels).filter(([,f])=>f.datums&&f.datums.startsWith(month)).sort((a,b)=>(a[1].datums+a[1].laiks).localeCompare(b[1].datums+b[1].laiks));
   for(const [,f] of fuels)if(f.eur==null)issues.push(`Uzpildei ${lvDate(f.datums)} (${fmt(f.litri,2)} l) nav summas eiro — ievadi to, citādi Excel summa būs nepilna.`);
   for(const [id,f] of fuels){let r=rows.find(x=>x.d===f.datums);if(!r){r=[...rows].reverse().find(x=>x.d<=f.datums)||rows[0];if(r)issues.push(`Uzpilde ${lvDate(f.datums)} (${fmt(f.litri,2)} l) dienā bez darba dienas ieraksta — pievienota ${lvDate(r.d)}.`)}if(r)r.fuel.push({...f,id})}
+  if(noRoute)issues.push(`Maršruti ${noRoute} dienām tiks salikti mēneša beigās, kad ielādēsi Google Timeline failu.`);
   const op=opening(month);if(op.l==null&&rows.length)issues.unshift("Nav zināms degvielas atlikums mēneša sākumā — ievadi to iestatījumos.");
   let bal=op.l??0,buyL=0,buyE=0,use=0,km=0;
   for(const r of rows){r.buy=r2(r.fuel.reduce((s,f)=>s+f.litri,0));r.use=r2(r.km*r.norm/100);bal=r2(bal-r.use+r.buy);r.bal=bal;buyL+=r.buy;buyE+=r.fuel.reduce((s,f)=>s+(f.eur||0),0);use+=r.use;km+=r.km}
@@ -240,6 +247,8 @@ function render(){
 function monthEndBanner(){if(!S.loaded)return;const now=new Date();const cur=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;const pm=prevMonth(cur);
   const has=Object.keys(S.days).some(d=>d.startsWith(pm));
   if(has&&!S.months[pm]){const m=+pm.slice(5)-1;banner(`<b>${MON_NOM[m][0].toUpperCase()+MON_NOM[m].slice(1)} ir beidzies.</b> Eksportē Google Timeline, tad sadaļā <a href="#menesis" id="goPrev">Mēnesis</a> ielādē to un izveido Excel.`);const g=$("goPrev");if(g)g.onclick=()=>{S.month=pm}}
+  else if(ENV.webview)banner(`<b>Lietotne atvērta citas lietotnes iekšējā pārlūkā</b> (piem. Gmail vai Claude). Šeit dati tiek dzēsti. Atver to no ikonas <b>Jimny</b> sākuma ekrānā vai Chrome pārlūkā.`,true);
+  else if(!ENV.standalone)banner(`<b>Lietotne atvērta kā tīmekļa lapa.</b> Lai dati droši saglabātos, instalē to (Chrome ⋮ → Instalēt lietotni) un turpmāk atver tikai no ikonas <b>Jimny</b>.`);
   else banner("")}
 function renderToday(){
   const now=new Date(),t=iso(now),d=S.days[t]||{};
@@ -278,7 +287,8 @@ function renderMonth(){
 async function renderSettings(){const s=S.settings;const put=(id,v)=>{const e=$(id);if(document.activeElement!==e)e.value=v??""};
   put("sComp",s.uznemums);put("sCar",s.auto);put("sNorm",s.norma);put("sHomeLat",s.majas?.lat);put("sHomeLon",s.majas?.lon);put("sWorkLat",s.darbs?.lat);put("sWorkLon",s.darbs?.lon);put("sOpenM",s.sakuma?.menesis);put("sOpenL",s.sakuma?.l);put("sOpenE",s.sakuma?.eur);
   try{const lb=await DB.get("kv","lastBackup");const est=navigator.storage?.estimate?await navigator.storage.estimate():null;const pers=navigator.storage?.persisted?await navigator.storage.persisted():null;
-    $("storeInfo").textContent=`Pēdējā kopija: ${lb?lvDate(lb.slice(0,10)):"vēl nav"}${est?` · aizņemts ${fmt(est.usage/1048576,1)} MB`:""}${pers===false?" · telefons var dzēst datus, ja pietrūkst vietas — instalē lietotni":""}`}catch(e){}}
+    const since=S.created?`${lvDate(S.created.slice(0,10))} ${S.created.slice(11,16)}`:"—";
+    $("storeInfo").innerHTML=`Dati šajā telefonā glabājas kopš: <b>${since}</b><br>Ieraksti: ${Object.keys(S.days).length} dienas, ${Object.keys(S.fuels).length} uzpildes<br>Atvērta: ${ENV.standalone?"kā instalēta lietotne ✓":"pārlūkā (nav instalēta)"} · ${ENV.browser}<br>Pastāvīga glabāšana: ${pers===true?"jā ✓":pers===false?"nē — telefons var dzēst datus":"nav zināms"}<br>Pēdējā kopija: ${lb?lvDate(lb.slice(0,10)):"vēl nav"}${est?` · aizņemts ${fmt(est.usage/1048576,1)} MB`:""}`}catch(e){}}
 $("setForm").addEventListener("submit",async e=>{e.preventDefault();
   S.settings={...DEF,uznemums:$("sComp").value.trim(),auto:$("sCar").value.trim(),norma:num($("sNorm").value)??7.9,majas:{lat:num($("sHomeLat").value),lon:num($("sHomeLon").value)},darbs:{lat:num($("sWorkLat").value),lon:num($("sWorkLon").value)},sakuma:{menesis:$("sOpenM").value,l:num($("sOpenL").value),eur:num($("sOpenE").value)}};
   try{await DB.put("kv","settings",S.settings);$("setMsg").textContent="Saglabāts."}catch(err){$("setMsg").textContent="Neizdevās saglabāt."}render()});
@@ -310,7 +320,8 @@ window.addEventListener("appinstalled",()=>{$("btnInstall").classList.remove("sh
 (async()=>{
   try{await DB.open();
     S.settings={...DEF,...((await DB.get("kv","settings"))||{})};S.months=(await DB.get("kv","months"))||{};
-    S.days=await DB.all("days");S.fuels=await DB.all("fuels")}
+    S.days=await DB.all("days");S.fuels=await DB.all("fuels");
+    S.created=await DB.get("kv","created");if(!S.created){S.created=new Date().toISOString();await DB.put("kv","created",S.created)}}
   catch(e){banner("Šajā pārlūkā nevar saglabāt datus (privātais režīms?). Atver lietotni parastā Chrome logā.",true)}
   S.loaded=true;render();
   if(!num(S.settings.majas?.lat))toast("Iestatījumos ievadi mājas koordinātas — pēc tām lietotne nosaka, kad diena beigusies.");

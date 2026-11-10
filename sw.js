@@ -1,5 +1,5 @@
 /* Bezsaistes kešatmiņa. Mainot lietotnes failus, palielini VERSION. */
-const VERSION = "jimny-v5";
+const VERSION = "jimny-v6";
 const FILES = [
   "./", "index.html", "style.css", "app.js", "gaz.js", "manifest.webmanifest",
   "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png",
@@ -18,7 +18,7 @@ self.addEventListener("fetch", e => {
   // lietotnes faili: vispirms tīkls (lai atjauninājumi pienāk), bezsaistē — kešatmiņa
   const shell = /\/(index\.html|app\.js|style\.css|gaz\.js|sw\.js)?$/.test(url.pathname);
   if (shell) {
-    e.respondWith(fetch(e.request).then(r => { const copy = r.clone(); caches.open(VERSION).then(c => c.put(e.request, copy)); return r; })
+    e.respondWith(fetch(e.request, {cache: "no-cache"}).then(r => { const copy = r.clone(); caches.open(VERSION).then(c => c.put(e.request, copy)); return r; })
       .catch(() => caches.match(e.request, {ignoreSearch: true}).then(r => r || caches.match("index.html"))));
   } else {
     e.respondWith(caches.match(e.request, {ignoreSearch: true}).then(r => r || fetch(e.request)));
